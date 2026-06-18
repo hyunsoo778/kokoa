@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#07110f">
+  <meta name="description" content="휴대폰 카메라로 볼링 자세와 공 궤적을 분석하는 AI 코칭 웹앱">
+  <title>LANE LAB — AI 볼링 코치</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="stylesheet" href="./styles.css?v=16">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#coach" aria-label="LANE LAB 홈">
+        <span class="brand-mark">LL</span>
+        <span><b>LANE LAB</b><small>AI BOWLING COACH</small></span>
+      </a>
+      <button class="icon-button" id="soundToggle" aria-label="음성 코칭 켜기">
+        <span class="sound-icon">◖</span>
+      </button>
+    </header>
+
+    <main>
+      <section class="page active" id="coach" data-page="coach">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">LIVE SESSION</p>
+            <h1>오늘의 샷을<br><em>한 프레임씩.</em></h1>
+          </div>
+          <div class="live-badge"><span></span> 준비됨</div>
+        </div>
+
+        <div class="camera-card">
+          <div class="camera-stage" id="cameraStage">
+            <video id="camera" playsinline muted></video>
+            <div class="lane-pattern-overlay" id="lanePatternOverlay" aria-hidden="true">
+              <div class="pattern-plane">
+                <img id="lanePatternImage" alt="">
+                <span class="pattern-center-line"></span>
+              </div>
+              <span class="pattern-overlay-label" id="patternOverlayLabel">OIL PATTERN</span>
+              <div class="pattern-touch-surface" id="patternTouchSurface"></div>
+              <button class="pattern-handle top-left" data-corner="topLeft" type="button" aria-label="핀 쪽 왼쪽 모서리"></button>
+              <button class="pattern-handle top-right" data-corner="topRight" type="button" aria-label="핀 쪽 오른쪽 모서리"></button>
+              <button class="pattern-handle bottom-left" data-corner="bottomLeft" type="button" aria-label="파울라인 왼쪽 모서리"></button>
+              <button class="pattern-handle bottom-right" data-corner="bottomRight" type="button" aria-label="파울라인 오른쪽 모서리"></button>
+            </div>
+            <canvas id="overlay"></canvas>
+            <div class="camera-placeholder" id="cameraPlaceholder">
+              <div class="lane-glyph">
+                <span></span><span></span><span></span>
+                <i></i>
+              </div>
+              <h2>휴대폰을 옆에 세워주세요</h2>
+              <p>파울라인과 전신이 보이도록<br>약 3~4m 떨어진 곳이 좋아요.</p>
+            </div>
+            <div class="scan-line" aria-hidden="true"></div>
+            <div class="camera-ui">
+              <span class="fps-pill" id="modelStatus">AI 모델 준비 중</span>
+              <span class="angle-pill">후면 · 세로 촬영</span>
+            </div>
+            <button class="ball-lock-toggle" id="ballLockToggle" type="button">공 지정</button>
+            <button class="pattern-calibrate-toggle" id="patternCalibrateToggle" hidden>패턴 맞춤</button>
+            <div class="camera-pattern-controls" id="cameraPatternControls" hidden>
+              <b>네 모서리를 레인 끝에 맞추세요</b>
+              <button class="pattern-auto-button" id="autoFitPattern" type="button">자동 맞춤</button>
+              <label><span>투명도</span><input id="cameraPatternOpacity" type="range" min="8" max="75" value="30"></label>
+              <button class="pattern-reset-button" id="resetPatternCorners" type="button">초기화</button>
+              <button id="closePatternControls" type="button">완료</button>
+            </div>
+            <button class="expand-camera" id="expandCamera" aria-label="촬영 화면 크게 보기">⛶</button>
+            <div class="feedback-float" id="feedbackFloat">
+              <span class="feedback-dot"></span>
+              <p><b>좋은 밸런스예요</b><small>슬라이드 무릎을 4° 더 낮춰보세요</small></p>
+            </div>
+            <div class="video-playback-controls" id="videoPlaybackControls" hidden>
+              <button id="videoPlayPause" type="button" aria-label="영상 일시정지">Ⅱ</button>
+              <span id="videoCurrentTime">0:00</span>
+              <input id="videoSeek" type="range" min="0" max="1000" value="0" aria-label="영상 재생 위치">
+              <span id="videoDuration">0:00</span>
+              <button id="videoRestart" type="button" aria-label="영상 처음부터">↺</button>
+            </div>
+          </div>
+          <div class="camera-controls">
+            <label class="utility-button" for="videoUpload" title="영상 불러오기">
+              <span>↥</span><small>영상</small>
+            </label>
+            <input id="videoUpload" type="file" accept="video/*" hidden>
+            <button class="record-button" id="cameraButton" aria-label="카메라 시작">
+              <span></span>
+            </button>
+            <button class="utility-button" id="flipButton" title="카메라 전환">
+              <span>↻</span><small>전환</small>
+            </button>
+          </div>
+          <div class="analysis-flow" aria-label="분석 진행 단계">
+            <span class="active" data-flow="camera"><i>1</i>카메라</span>
+            <span data-flow="pose"><i>2</i>관절·공</span>
+            <span data-flow="coach"><i>3</i>코칭</span>
+            <span data-flow="result"><i>4</i>결과</span>
+          </div>
+          <p class="privacy-note">영상은 이 기기에서만 분석되며 서버로 전송되지 않습니다.</p>
+        </div>
+
+        <div class="quick-actions">
+          <button class="primary-action" id="demoShot">
+            <span class="action-icon">▶</span>
+            <span><b>데모 샷 분석</b><small>기능을 먼저 체험해보세요</small></span>
+            <i>→</i>
+          </button>
+          <button class="secondary-action" id="calibrateButton">
+            <span class="target-icon">＋</span>
+            <span><b>레인 보정</b><small>파울라인 · 보드 설정</small></span>
+          </button>
+        </div>
+
+        <section class="metrics-section">
+          <div class="subheading">
+            <div><p class="eyebrow">LAST SHOT</p><h2>샷 리포트</h2></div>
+            <span class="score-ring"><b id="shotScore">87</b><small>점</small></span>
+          </div>
+          <div class="metric-grid">
+            <article class="metric-card accent">
+              <span class="metric-label">구속</span>
+              <strong><span id="speedValue">24.8</span><small> km/h</small></strong>
+              <div class="sparkline"><i style="height:30%"></i><i style="height:48%"></i><i style="height:42%"></i><i style="height:68%"></i><i style="height:78%"></i><i style="height:70%"></i><i style="height:88%"></i></div>
+              <p>일관된 스피드</p>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">릴리스 각도</span>
+              <strong><span id="releaseValue">16.4</span><small>°</small></strong>
+              <div class="angle-viz"><i></i><span></span></div>
+              <p>목표 15°–18°</p>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">브레이크 보드</span>
+              <strong><span id="boardValue">8.2</span><small> 보드</small></strong>
+              <div class="board-viz"><span></span><i></i></div>
+              <p>목표보다 0.8 안쪽</p>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">밸런스</span>
+              <strong><span id="balanceValue">92</span><small>%</small></strong>
+              <div class="balance-bar"><i></i></div>
+              <p>안정적</p>
+            </article>
+          </div>
+        </section>
+
+        <article class="coach-card">
+          <div class="coach-avatar">AI</div>
+          <div>
+            <span class="metric-label">코치 노트</span>
+            <h3 id="coachTitle">릴리스 타이밍이 아주 좋아요.</h3>
+            <p id="coachText">마지막 스텝에서 상체가 조금 먼저 열렸어요. 왼쪽 어깨를 핀 방향에 0.2초 더 유지해보세요.</p>
+          </div>
+          <button id="speakFeedback" aria-label="코치 노트 듣기">◖</button>
+        </article>
+        <p class="estimate-note">※ 관절 각도는 카메라 영상 기반 측정값이며, 공 궤적·보드 위치는 단일 카메라 기반 추정값입니다.</p>
+
+        <section class="pro-shot-result" id="proShotResult">
+          <div class="subheading">
+            <div><p class="eyebrow">BALL MOTION</p><h2>투구 결과 상세</h2></div>
+            <span class="tracking-quality" id="trackingQuality">궤적 대기</span>
+          </div>
+          <div class="result-lane-map">
+            <canvas id="resultTrajectoryCanvas" width="300" height="620"></canvas>
+            <div class="result-pin-deck"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <span class="result-point release" id="resultReleasePoint">릴리스</span>
+            <span class="result-point break" id="resultBreakPoint">BP</span>
+            <span class="result-point entry" id="resultEntryPoint">진입</span>
+          </div>
+          <div class="pro-metric-grid">
+            <article><small>회전수</small><b id="resultRpm">—</b><span>RPM</span><em id="rpmNote">마커 필요</em></article>
+            <article><small>볼 스피드</small><b id="resultBallSpeed">—</b><span>km/h</span><em>평균 속도</em></article>
+            <article><small>브레이크 포인트</small><b id="resultBreakBoard">—</b><span>보드</span><em id="resultBreakDistance">— ft</em></article>
+            <article><small>포켓 진입</small><b id="resultEntryBoard">—</b><span>보드</span><em>핀덱 기준</em></article>
+            <article><small>진입각</small><b id="resultEntryAngle">—</b><span>°</span><em>마지막 궤적</em></article>
+            <article><small>추적 프레임</small><b id="resultTrackFrames">0</b><span>개</span><em id="resultTrackTime">—초</em></article>
+          </div>
+        </section>
+      </section>
+
+      <section class="page" id="lane" data-page="lane">
+        <div class="section-heading compact">
+          <div><p class="eyebrow">LANE READER</p><h1>라인을 읽는<br><em>더 선명한 방법.</em></h1></div>
+        </div>
+
+        <div class="panel pattern-panel">
+          <div class="panel-title"><div><span class="step">01</span><h2>오일 패턴</h2></div><span class="status-good">분석 가능</span></div>
+          <div class="pattern-tabs" role="tablist">
+            <button class="active" data-pattern="house">하우스</button>
+            <button data-pattern="sport">스포츠</button>
+            <button data-pattern="short">숏</button>
+            <button data-pattern="long">롱</button>
+          </div>
+          <div class="pattern-overlay-tools">
+            <div class="pattern-upload-row">
+              <label class="pattern-image-button" for="patternImageUpload"><span>▧</span> 패턴표 이미지 불러오기</label>
+              <input id="patternImageUpload" type="file" accept="image/*" hidden>
+              <button id="togglePatternOverlay" type="button" disabled>바닥 표시</button>
+            </div>
+            <div class="pattern-preview" id="patternPreview" hidden>
+              <canvas id="patternCropPreview"></canvas>
+              <div>
+                <b id="patternAnalysisTitle">오일 그래프 자동 추출</b>
+                <small id="patternAnalysisStatus">이미지의 문자와 분포를 분석합니다.</small>
+                <button id="removePatternImage" type="button">이미지 제거</button>
+              </div>
+            </div>
+            <div class="pattern-analysis-result" id="patternAnalysisResult" hidden>
+              <div><small>패턴명</small><b id="analyzedPatternName">—</b></div>
+              <div><small>길이</small><b id="analyzedPatternLength">—</b></div>
+              <div><small>오일량</small><b id="analyzedPatternVolume">—</b></div>
+              <div><small>추천 라인</small><b id="analyzedPatternLine">—</b></div>
+            </div>
+            <div class="overlay-controls" id="overlayControls" hidden>
+              <p>카메라 화면의 <b>패턴 맞춤</b> 버튼에서 실제 레인에 맞춰 조절할 수 있습니다.</p>
+            </div>
+          </div>
+          <div class="saved-patterns" id="savedPatterns"></div>
+          <button class="add-pattern-button" id="openPatternForm"><span>＋</span> 시합 패턴 추가</button>
+          <form class="pattern-form" id="patternForm" hidden>
+            <label>패턴 이름<input id="customPatternName" required maxlength="30" placeholder="예: 2026 국가대표 선발전"></label>
+            <div class="pattern-form-grid">
+              <label>길이(ft)<input id="customPatternLength" type="number" min="28" max="55" value="41" required></label>
+              <label>오일 비율<input id="customPatternRatio" type="number" min="1" max="15" step=".1" value="3" required></label>
+              <label>스탠딩 보드<input id="customStanding" type="number" min="1" max="39" value="20" required></label>
+              <label>에임 보드<input id="customAim" type="number" min="1" max="39" value="13" required></label>
+              <label>브레이크 보드<input id="customBreak" type="number" min="1" max="39" value="8" required></label>
+              <label>난이도<select id="customDifficulty"><option>보통</option><option>어려움</option><option>매우 어려움</option></select></label>
+            </div>
+            <label>공략 메모<textarea id="customReason" rows="2" placeholder="추천 볼, 이동 방향, 주의점"></textarea></label>
+            <label>패턴표 이미지<input id="customPatternImage" type="file" accept="image/*"></label>
+            <div class="pattern-form-actions">
+              <button type="button" id="cancelPattern">취소</button>
+              <button type="submit">패턴 저장</button>
+            </div>
+          </form>
+          <div class="pattern-info">
+            <div><small>길이</small><b id="patternLength">40 ft</b></div>
+            <div><small>비율</small><b id="patternRatio">8 : 1</b></div>
+            <div><small>난이도</small><b id="patternDifficulty">보통</b></div>
+          </div>
+        </div>
+
+        <div class="lane-layout">
+          <div class="lane-visual">
+            <div class="pin-deck">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+            <div class="oil-zone" id="oilZone"></div>
+            <svg viewBox="0 0 180 580" preserveAspectRatio="none" aria-label="추천 공 궤적">
+              <path class="target-path-shadow" d="M126 565 C126 410 128 310 91 220 S54 90 82 38"/>
+              <path class="target-path" id="targetPath" d="M126 565 C126 410 128 310 91 220 S54 90 82 38"/>
+              <circle cx="126" cy="565" r="7" class="start-dot"/>
+              <circle cx="61" cy="122" r="6" class="break-dot"/>
+            </svg>
+            <div class="lane-label start">23</div>
+            <div class="lane-label arrows">14</div>
+            <div class="lane-label break">8</div>
+          </div>
+          <div class="line-data">
+            <article><small>스탠딩</small><b id="standingBoard">23</b><span>보드</span></article>
+            <article><small>에임</small><b id="aimBoard">14</b><span>보드</span></article>
+            <article class="hot"><small>브레이크</small><b id="breakBoard">8</b><span>보드</span></article>
+          </div>
+        </div>
+
+        <article class="recommendation">
+          <span class="recommendation-icon">↗</span>
+          <div><small>AI 추천 라인</small><h3 id="lineRecommendation">23 → 14 → 8 보드</h3><p id="lineReason">마른 바깥쪽을 활용해 백엔드 반응을 확보하세요.</p></div>
+        </article>
+
+        <div class="panel board-calculator">
+          <div class="panel-title"><div><span class="step">02</span><h2>보드 이동 계산</h2></div></div>
+          <div class="calc-row">
+            <label>이전 결과
+              <select id="shotResult">
+                <option value="pocket">포켓 스트라이크</option>
+                <option value="high">헤드핀 정면 / 하이</option>
+                <option value="light">라이트 포켓</option>
+                <option value="washout">워시아웃</option>
+                <option value="split">스플릿</option>
+              </select>
+            </label>
+            <button id="calculateMove">이동 계산</button>
+          </div>
+          <div class="move-result" id="moveResult"><span>유지</span><p>현재 라인이 안정적입니다.</p></div>
+        </div>
+      </section>
+
+      <section class="page" id="history" data-page="history">
+        <div class="section-heading compact">
+          <div><p class="eyebrow">SHOT JOURNAL</p><h1>좋아지는 과정도<br><em>기록이니까.</em></h1></div>
+          <button class="text-button" id="clearHistory">초기화</button>
+        </div>
+        <div class="history-summary">
+          <div><small>오늘 샷</small><b id="shotCount">0</b></div>
+          <div><small>평균 점수</small><b id="averageScore">—</b></div>
+          <div><small>최고 점수</small><b id="bestScore">—</b></div>
+        </div>
+        <div class="history-list" id="historyList">
+          <div class="empty-history">
+            <span>◎</span>
+            <h2>아직 기록된 샷이 없어요</h2>
+            <p>코치 화면에서 데모 샷을 분석하거나<br>카메라 세션을 시작해보세요.</p>
+            <button data-go="coach">첫 샷 시작하기</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="page" id="settings" data-page="settings">
+        <div class="section-heading compact">
+          <div><p class="eyebrow">MY SETUP</p><h1>나에게 맞는<br><em>코칭 설정.</em></h1></div>
+        </div>
+        <div class="panel settings-panel">
+          <label><span><b>주 사용 손</b><small>자세와 라인을 좌우 반전합니다</small></span><select id="handedness"><option>오른손</option><option>왼손</option></select></label>
+          <label><span><b>코칭 수준</b><small>피드백의 상세도를 조절합니다</small></span><select><option>중급</option><option>입문</option><option>상급</option></select></label>
+          <label><span><b>음성 피드백</b><small>샷 직후 코치 노트를 읽습니다</small></span><input id="voiceSetting" type="checkbox" role="switch"></label>
+          <label><span><b>데이터 저장</b><small>샷 기록을 이 기기에 보관합니다</small></span><input type="checkbox" role="switch" checked></label>
+        </div>
+        <div class="setup-guide">
+          <p class="eyebrow">CAMERA SETUP</p><h2>정확도를 높이는 3가지</h2>
+          <ol>
+            <li><span>1</span><div><b>측면 3–4m</b><small>어프로치 전체와 파울라인이 화면에 들어오게 해주세요.</small></div></li>
+            <li><span>2</span><div><b>60fps 권장</b><small>공과 손이 빠르게 움직여 프레임이 높을수록 정확합니다.</small></div></li>
+            <li><span>3</span><div><b>밝은 레인</b><small>공과 바닥의 색 차이가 크면 궤적을 더 잘 찾습니다.</small></div></li>
+          </ol>
+        </div>
+        <p class="version">LANE LAB MVP · 로컬 분석 엔진</p>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="주 메뉴">
+      <button class="active" data-target="coach"><span>◉</span><small>코치</small></button>
+      <button data-target="lane"><span>⌁</span><small>레인</small></button>
+      <button data-target="history"><span>▥</span><small>기록</small></button>
+      <button data-target="settings"><span>⚙</span><small>설정</small></button>
+    </nav>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script type="module" src="./pose-engine.js?v=17"></script>
+  <script src="./app.js?v=17"></script>
+</body>
+</html>
