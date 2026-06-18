@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#c9ff3d"/>
+  <circle cx="256" cy="256" r="188" fill="#07110f"/>
+  <path d="M154 351c67-4 62-83 105-119 28-24 51-28 70-64" fill="none" stroke="#c9ff3d" stroke-width="18" stroke-linecap="round" stroke-dasharray="3 28"/>
+  <circle cx="154" cy="351" r="35" fill="#ff7043"/>
+  <circle cx="143" cy="340" r="6" fill="#07110f"/>
+  <circle cx="160" cy="333" r="6" fill="#07110f"/>
+  <circle cx="167" cy="350" r="6" fill="#07110f"/>
+  <text x="142" y="216" fill="#f4f7f2" font-family="Arial,sans-serif" font-size="58" font-weight="800" letter-spacing="-4">LANE</text>
+  <text x="142" y="269" fill="#50d9cd" font-family="Arial,sans-serif" font-size="50" font-weight="800" letter-spacing="3">LAB</text>
+</svg>

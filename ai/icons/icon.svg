@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#07110f"/>
+  <path d="M98 96h316v320H98z" fill="#0d1b18" stroke="#263b34" stroke-width="8"/>
+  <path d="M141 379c88-5 81-109 137-156 37-31 67-37 93-84" fill="none" stroke="#c9ff3d" stroke-width="20" stroke-linecap="round" stroke-dasharray="3 34"/>
+  <circle cx="143" cy="379" r="42" fill="#ff7043"/>
+  <circle cx="129" cy="365" r="7" fill="#07110f"/>
+  <circle cx="149" cy="357" r="7" fill="#07110f"/>
+  <circle cx="158" cy="377" r="7" fill="#07110f"/>
+  <path d="M242 113l14 42 14-42M294 113l14 42 14-42M346 113l14 42 14-42" fill="none" stroke="#f4f7f2" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="112" y="197" fill="#f4f7f2" font-family="Arial,sans-serif" font-size="74" font-weight="800" letter-spacing="-5">LANE</text>
+  <text x="112" y="258" fill="#50d9cd" font-family="Arial,sans-serif" font-size="58" font-weight="800" letter-spacing="4">LAB</text>
+</svg>
